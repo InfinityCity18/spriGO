@@ -23,7 +23,7 @@ const bg = "9"
 const cursor = "c"
 
 setLegend(
-  [ black, bitmap`
+  [black, bitmap`
 ................
 ....00000000....
 ...0000000000...
@@ -39,8 +39,8 @@ setLegend(
 ..L0000000000L..
 ...L00000000L...
 ....LLLLLLLL....
-................` ],
-  [ white, bitmap`
+................`],
+  [white, bitmap`
 ................
 ....22222222....
 ...2222222222...
@@ -57,7 +57,7 @@ setLegend(
 ...L22222222L...
 ....LLLLLLLL....
 ................`],
-  [ cursor, bitmap`
+  [cursor, bitmap`
 555..........555
 55............55
 5..............5
@@ -74,7 +74,7 @@ setLegend(
 5..............5
 55............55
 555..........555`],
-  [ cross, bitmap`
+  [cross, bitmap`
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
@@ -91,7 +91,7 @@ CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC`],
-  [ lt_corner, bitmap`
+  [lt_corner, bitmap`
 ................
 ................
 ................
@@ -108,7 +108,7 @@ CCCCCC300CCCCCCC`],
 .......00CCCCCCC
 .......00CCCCCCC
 .......00CCCCCCC`],
-  [ rt_corner, bitmap`
+  [rt_corner, bitmap`
 ................
 ................
 ................
@@ -125,7 +125,7 @@ CCCCCC300.......
 CCCCCC300.......
 CCCCCC300.......
 CCCCCC300.......`],
-  [ lb_corner, bitmap`
+  [lb_corner, bitmap`
 .......00CCCCCCC
 .......00CCCCCCC
 .......00CCCCCCC
@@ -142,7 +142,7 @@ CCCCCC300.......`],
 ................
 ................
 ................`],
-  [ rb_corner, bitmap`
+  [rb_corner, bitmap`
 CCCCCC300.......
 CCCCCC300.......
 CCCCCC300.......
@@ -159,7 +159,7 @@ CCCCCC300.......
 ................
 ................
 ................`],
-  [ l_pipe, bitmap`
+  [l_pipe, bitmap`
 .......00CCCCCCC
 .......00CCCCCCC
 .......00CCCCCCC
@@ -176,7 +176,7 @@ CCCCCC300.......
 .......00CCCCCCC
 .......00CCCCCCC
 .......00CCCCCCC`],
-  [ r_pipe, bitmap`
+  [r_pipe, bitmap`
 CCCCCC300.......
 CCCCCC300.......
 CCCCCC300.......
@@ -193,7 +193,7 @@ CCCCCC300.......
 CCCCCC300.......
 CCCCCC300.......
 CCCCCC300.......`],
-  [ t_bar, bitmap`
+  [t_bar, bitmap`
 ................
 ................
 ................
@@ -210,7 +210,7 @@ CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC`],
-  [ b_bar, bitmap`
+  [b_bar, bitmap`
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
@@ -227,7 +227,7 @@ CCCCCC300CCCCCCC
 ................
 ................
 ................`],
-  [ bg, bitmap`
+  [bg, bitmap`
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
@@ -244,7 +244,7 @@ DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD`]
-  
+
 )
 
 const boards = [
@@ -300,19 +300,39 @@ const board_size = [9, 13, 19];
 setSolids([])
 
 let level = 0
+let player_turn = black; //black starts
 
 setMap(boards[level])
+
+//0 means empty, b means black stone, w means white stone
 let board = create_board_arr(board_size[level]);
 
 setBackground(bg)
 
-setPushables({
-})
+setPushables({})
 
-addSprite(8,8, black);
-addSprite(3,6, white);
-addSprite(5,2, white);
-addSprite(5,4, cursor);
+addSprite(8, 8, black);
+addSprite(3, 6, white);
+addSprite(5, 2, white);
+addSprite(5, 4, cursor);
+
+
+afterInput(() => {})
+
+onInput("j", () => {
+  const [cursor_x, cursor_y] = get_cursor_pos();
+  if (board[cursor_x][cursor_y] != 0) {
+    return;
+  }
+  board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs
+  let opponent_color = player_turn == black ? white : black;
+
+  
+
+  addSprite(cursor_x, cursor_y, player_turn);
+  board[cursor_x][cursor_y] = player_turn;
+  
+})
 
 onInput("s", () => {
   getFirst(cursor).y += 1
@@ -330,13 +350,16 @@ onInput("d", () => {
   getFirst(cursor).x += 1
 })
 
-console.log(getFirst(cursor));
-
-afterInput(() => {
+onInput("i", () => {
+  remove_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
 })
 
-onInput("j", () => {
-  const [cursor_x, cursor_y] = get_cursor_pos();
+onInput("l", () => {
+  if (player_turn == black) {
+    player_turn = white;
+  } else {
+    player_turn = black;
+  }
 })
 
 function create_board_arr(size) {
@@ -349,7 +372,7 @@ function create_board_arr(size) {
     }
     arr.push(column)
   }
-  
+
   return arr;
 }
 
@@ -357,3 +380,46 @@ function get_cursor_pos() {
   return [getFirst(cursor).x, getFirst(cursor).y];
 }
 
+function mark_dfs(map, x, y, marker, opponent_color) {
+  const adjacent = []
+  var has_liberty = false;
+  if (x-1 >= 0) {
+    adjacent.push([x-1, y]);
+  }
+  if (x+1 < board_size[level]) {
+    adjacent.push([x+1, y]);
+  }
+  if (y-1 >= 0) {
+    adjacent.push([x, y-1]);
+  }
+  if (y+1 < board_size[level]) {
+    adjacent.push([x, y+1]);
+  }
+
+  for (const [x, y] in adjacent) {
+    
+  }
+}
+
+
+function place_piece(x,y,color) {
+  addSprite(x,y,color);
+  board[x][y] = color;
+}
+
+function remove_piece(x,y,color) {
+  const sprites = getTile(x,y);
+  console.log(sprites, x, y, color);
+  for (let i in sprites) {
+    if (sprites[i].type == color) {
+      sprites[i].remove();
+      break;
+    }
+  }
+  board[x][y] = 0;
+}
+
+
+function is_allowed_to_be_placed(x,y,color) {
+
+}
