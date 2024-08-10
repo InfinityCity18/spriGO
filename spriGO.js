@@ -10,16 +10,17 @@ https://sprig.hackclub.com/gallery/getting_started
 
 const white = "w"
 const black = "b"
-const cross = "c"
-const lt_corner = "l"
-const rt_corner = "r"
-const lb_corner = "o"
-const rb_corner = "p"
-const l_pipe = "i"
-const r_pipe = "u"
-const t_bar = "t"
-const b_bar = "k"
-const bg = "0"
+const cross = "0"
+const lt_corner = "1"
+const rt_corner = "2"
+const lb_corner = "3"
+const rb_corner = "4"
+const l_pipe = "5"
+const r_pipe = "6"
+const t_bar = "7"
+const b_bar = "8"
+const bg = "9"
+const cursor = "c"
 
 setLegend(
   [ black, bitmap`
@@ -56,6 +57,23 @@ setLegend(
 ...L22222222L...
 ....LLLLLLLL....
 ................`],
+  [ cursor, bitmap`
+555..........555
+55............55
+5..............5
+................
+................
+................
+................
+................
+................
+................
+................
+................
+................
+5..............5
+55............55
+555..........555`],
   [ cross, bitmap`
 CCCCCC300CCCCCCC
 CCCCCC300CCCCCCC
@@ -226,73 +244,116 @@ DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD`]
+  
 )
+
+const boards = [
+  map`
+177777772
+500000006
+500000006
+500000006
+500000006
+500000006
+500000006
+500000006
+388888884`, //9x9
+  map`
+1777777777772
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+5000000000006
+3888888888884`, //13x13
+  map`
+1777777777777777772
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+5000000000000000006
+3888888888888888884` //19x19
+]
+
+//selectable board sizes
+const board_size = [9, 13, 19];
 
 setSolids([])
 
 let level = 0
-const boards = [
-  map`
-ltttttttr
-icccccccu
-icccccccu
-icccccccu
-icccccccu
-icccccccu
-icccccccu
-icccccccu
-okkkkkkkp`,
-  map`
-ltttttttttttr
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-icccccccccccu
-okkkkkkkkkkkp`,
-  map`
-ltttttttttttttttttr
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-icccccccccccccccccu
-okkkkkkkkkkkkkkkkkp`
-]
 
 setMap(boards[level])
+let board = create_board_arr(board_size[level]);
+
 setBackground(bg)
 
 setPushables({
-  [ black ]: []
 })
 
-addSprite(2,6, black);
+addSprite(8,8, black);
 addSprite(3,6, white);
-addSprite(5,3, white);
+addSprite(5,2, white);
+addSprite(5,4, cursor);
 
 onInput("s", () => {
-  getFirst(black).y += 1
+  getFirst(cursor).y += 1
 })
 
-afterInput(() => {
-  
+onInput("w", () => {
+  getFirst(cursor).y -= 1
 })
+
+onInput("a", () => {
+  getFirst(cursor).x -= 1
+})
+
+onInput("d", () => {
+  getFirst(cursor).x += 1
+})
+
+console.log(getFirst(cursor));
+
+afterInput(() => {
+})
+
+onInput("j", () => {
+  const [cursor_x, cursor_y] = get_cursor_pos();
+})
+
+function create_board_arr(size) {
+  let arr = []
+
+  for (let i = 0; i < size; i++) {
+    let column = []
+    for (let j = 0; j < size; j++) {
+      column.push(0)
+    }
+    arr.push(column)
+  }
+  
+  return arr;
+}
+
+function get_cursor_pos() {
+  return [getFirst(cursor).x, getFirst(cursor).y];
+}
+
