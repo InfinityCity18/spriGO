@@ -366,6 +366,7 @@ onInput("j", () => {
       } else {
         liberty_opponents += 1;
       }
+      opponent_marker += 1;
 
     }
   }
@@ -377,6 +378,7 @@ onInput("j", () => {
     return;
   }
   board[cursor_x][cursor_y] = 0;
+  place_piece(cursor_x, cursor_y, player_turn);
   console.log("opponent map: ", opponent_map);
   console.log("friendly_map: ", friendly_map);
   console.log("to_capture :",to_capture);
@@ -409,6 +411,9 @@ onInput("i", () => {
 })
 
 onInput("k", () => {
+  if (board[getFirst(cursor).x][getFirst(cursor).y] == player_turn) {
+    return;
+  }
   place_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
 })
 
@@ -475,7 +480,7 @@ function place_piece(x, y, piece_color) {
 }
 
 function remove_piece(x, y, piece_color) {
-  const sprites = getTile(x, y);
+  const sprites = getTile(Number(x), Number(y));
   for (let i in sprites) {
     if (sprites[i].type == piece_color) {
       sprites[i].remove();
