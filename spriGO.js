@@ -1,4 +1,4 @@
-
+/*
 First time? Check out the tutorial game:
 https://sprig.hackclub.com/gallery/getting_started
 
@@ -337,9 +337,8 @@ onInput("j", () => {
   var friendly_marker = 1;
   var liberty_opponents = 0;
 
-  for (let i in legal_adjacent_tiles) {
-    console.log("test:", Math.random());
-    let [x, y] = legal_adjacent_tiles[i];
+  for (let i in adjacent) {
+    let [x, y] = adjacent[i];
     let type = board[x][y];
 
     if (type == player_turn) { //is our stone
@@ -351,18 +350,17 @@ onInput("j", () => {
         continue;
       }
 
-      if (!(mark_dfs(friendly_map, x, y, friendly_marker, color, opponent_color))) {//we have to invert colors, because we are searching for our stones
+      if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) {//we have to invert colors, because we are searching for our stones
         friendly_in_danger.push(friendly_marker);
       }
       friendly_marker += 1;
       
     } else if (type == opponent_color) {
-
       if (opponent_map[x][y] != 0) { //was here before
         continue;
       }
 
-      if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, color))) {
+      if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, player_turn))) {
         //whole string with marker is has no liberties, we can add it to to_capture
         to_capture.push(opponent_marker);
       } else {
@@ -379,6 +377,8 @@ onInput("j", () => {
     return;
   }
   board[cursor_x][cursor_y] = 0;
+  console.log("opponent map: ", opponent_map);
+  console.log("friendly_map: ", friendly_map);
   console.log("to_capture :",to_capture);
   console.log("friendly_in_danger :",friendly_in_danger);
   console.log("opponent_marker :", opponent_marker);
@@ -438,7 +438,7 @@ function get_cursor_pos() {
   return [getFirst(cursor).x, getFirst(cursor).y];
 }
 
-function mark_dfs(map, x, y, marker, opponent_color, color) {
+function mark_dfs(map, x, y, marker, opponent_color, piece_color) {
   map[x][y] = marker;
   const adjacent = [];
   var has_liberty = false;
@@ -446,19 +446,21 @@ function mark_dfs(map, x, y, marker, opponent_color, color) {
   //index bounds check
   legal_adjacent_tiles(x, y, adjacent);
 
-  for (const [x, y] in adjacent) {
+  for (const i in adjacent) {
+    const x_loop = adjacent[i][0];
+    const y_loop = adjacent[i][1];
 
-    if (map[x][y] != 0) { //this place was visited already
+    if (map[x_loop][y_loop] != 0) { //this place was visited already
       continue;
     }
 
-    var type = board[x][y];
+    var type = board[x_loop][y_loop];
 
-    if (type == color) {
-      if (mark_dfs(map, x, y, marker, opponent_color)) {
+    if (type == opponent_color) {
+      if (mark_dfs(map, x_loop, y_loop, marker, opponent_color, piece_color)) {
         has_liberty = true;
       };
-    } else if (type == opponent_color) {} else {
+    } else if (type == piece_color) {} else {
       has_liberty = true;
     }
   }
@@ -467,16 +469,15 @@ function mark_dfs(map, x, y, marker, opponent_color, color) {
 }
 
 
-function place_piece(x, y, color) {
-  addSprite(x, y, color);
-  board[x][y] = color;
+function place_piece(x, y, piece_color) {
+  addSprite(x, y, piece_color);
+  board[x][y] = piece_color;
 }
 
-function remove_piece(x, y, color) {
+function remove_piece(x, y, piece_color) {
   const sprites = getTile(x, y);
-  console.log(sprites, x, y, color);
   for (let i in sprites) {
-    if (sprites[i].type == color) {
+    if (sprites[i].type == piece_color) {
       sprites[i].remove();
       break;
     }
