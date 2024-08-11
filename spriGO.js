@@ -309,21 +309,25 @@ let board = create_board_arr(board_size[level]);
 
 setBackground(bg)
 
+spawn_cursor();
+
 setPushables({})
 
-addSprite(8, 8, black);
-addSprite(3, 6, white);
-addSprite(5, 2, white);
-addSprite(5, 4, cursor);
-
-
 afterInput(() => {})
+
+let ko = create_board_arr(board_size[level]);
 
 onInput("j", () => {
   const [cursor_x, cursor_y] = get_cursor_pos();
   if (board[cursor_x][cursor_y] != 0) {
     return;
   }
+
+  if (ko[cursor_x][cursor_y] == 1) {
+    board[cursor_x][cursor_y] = 0;
+    return;
+  }
+  
   board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs, will be deleted if move is illegal
   let opponent_color = player_turn == black ? white : black;
   let adjacent = [];
@@ -334,6 +338,12 @@ onInput("j", () => {
   let to_capture = [];
   let friendly_in_danger = [];
   var opponent_marker = 1;
+  var liberty_markers = {
+    1: false,
+    2: false,
+    3: false,
+    4: false
+  };
   var friendly_marker = 1;
   var liberty_opponents = 0;
 
@@ -350,44 +360,72 @@ onInput("j", () => {
         continue;
       }
 
-      if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) {//we have to invert colors, because we are searching for our stones
+      if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) { //we have to invert colors, because we are searching for our stones
         friendly_in_danger.push(friendly_marker);
       }
       friendly_marker += 1;
-      
+
     } else if (type == opponent_color) {
       if (opponent_map[x][y] != 0) { //was here before
+        if (liberty_markers[opponent_map[x][y]]) {
+          liberty_opponents += 1;
+        }
         continue;
       }
 
       if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, player_turn))) {
-        //whole string with marker is has no liberties, we can add it to to_capture
         to_capture.push(opponent_marker);
       } else {
+        liberty_markers[opponent_marker] = true;
         liberty_opponents += 1;
       }
       opponent_marker += 1;
 
     }
   }
-
+  var dont_delete_ko = false;
+  var dont_delete_ko_x;
+  var dont_delete_ko_y;
   if (to_capture.length > 0) { //we can capture at least one, so our move is surely legal
+    if (to_capture.length == 1) {
+      let [flow, x_ko, y_ko] = count_for_ko(opponent_map, to_capture[0]);
+      if (flow) {
+        dont_delete_ko = true;
+        dont_delete_ko_x = x_ko;
+        dont_delete_ko_y = y_ko;
+      }
+    }
     capture(opponent_map, to_capture, opponent_color);
+  }
+
+  if ((liberty_opponents + friendly_in_danger.length) == adjacent.length) {
     board[cursor_x][cursor_y] = 0;
-    place_piece(cursor_x, cursor_y, player_turn);
     return;
   }
+
+  if (dont_delete_ko) {
+    for (let iter_x in ko) {
+      for (let iter_y in ko[iter_x]) {
+        if (!(iter_x == dont_delete_ko_x && iter_y == dont_delete_ko_y)) {
+          ko[iter_x][iter_y] = 0;
+        }
+      }
+    }
+  } else {
+    ko = create_board_arr(board_size[level]);
+  }
+
   board[cursor_x][cursor_y] = 0;
   place_piece(cursor_x, cursor_y, player_turn);
   console.log("opponent map: ", opponent_map);
   console.log("friendly_map: ", friendly_map);
-  console.log("to_capture :",to_capture);
-  console.log("friendly_in_danger :",friendly_in_danger);
+  console.log("to_capture :", to_capture);
+  console.log("friendly_in_danger :", friendly_in_danger);
   console.log("opponent_marker :", opponent_marker);
   console.log("friendly_marker :", friendly_marker);
   console.log("liberty_opponents :", liberty_opponents);
   console.log(Math.random());
-  
+
 })
 
 onInput("s", () => {
@@ -514,4 +552,29 @@ function capture(map, to_capture, opponent_color) {
       }
     }
   }
+}
+
+function count_for_ko(map, marker) {
+  var count = 0;
+  var x_ko;
+  var y_ko;
+  for (let x in map) {
+    for (let y in map[x]) {
+      if (map[x][y] == marker) {
+        count += 1;
+        x_ko = x;
+        y_ko = y;
+      }
+    }
+  }
+  if (count == 1) {
+    ko[x_ko][y_ko] = 1;
+    return [true, x_ko, y_ko];
+  }
+  return [false];
+}
+
+function spawn_cursor() {
+  const half = Math.floor(board_size[level] / 2);
+  addSprite(half, half, cursor);
 }
