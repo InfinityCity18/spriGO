@@ -1,4 +1,4 @@
-/*
+
 First time? Check out the tutorial game:
 https://sprig.hackclub.com/gallery/getting_started
 
@@ -324,13 +324,67 @@ onInput("j", () => {
   if (board[cursor_x][cursor_y] != 0) {
     return;
   }
-  board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs
+  board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs, will be deleted if move is illegal
   let opponent_color = player_turn == black ? white : black;
+  let adjacent = [];
+  legal_adjacent_tiles(cursor_x, cursor_y, adjacent);
 
-  
+  let opponent_map = create_board_arr(board_size[level]);
+  let friendly_map = create_board_arr(board_size[level]);
+  let to_capture = [];
+  let friendly_in_danger = [];
+  var opponent_marker = 1;
+  var friendly_marker = 1;
+  var liberty_opponents = 0;
 
-  addSprite(cursor_x, cursor_y, player_turn);
-  board[cursor_x][cursor_y] = player_turn;
+  for (let i in legal_adjacent_tiles) {
+    console.log("test:", Math.random());
+    let [x, y] = legal_adjacent_tiles[i];
+    let type = board[x][y];
+
+    if (type == player_turn) { //is our stone
+
+      if (friendly_map[x][y] != 0) { //was here before
+        if (friendly_in_danger.includes(friendly_map[x][y])) {
+          friendly_in_danger.push(friendly_map[x][y]);
+        }
+        continue;
+      }
+
+      if (!(mark_dfs(friendly_map, x, y, friendly_marker, color, opponent_color))) {//we have to invert colors, because we are searching for our stones
+        friendly_in_danger.push(friendly_marker);
+      }
+      friendly_marker += 1;
+      
+    } else if (type == opponent_color) {
+
+      if (opponent_map[x][y] != 0) { //was here before
+        continue;
+      }
+
+      if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, color))) {
+        //whole string with marker is has no liberties, we can add it to to_capture
+        to_capture.push(opponent_marker);
+      } else {
+        liberty_opponents += 1;
+      }
+
+    }
+  }
+
+  if (to_capture.length > 0) { //we can capture at least one, so our move is surely legal
+    capture(opponent_map, to_capture, opponent_color);
+    board[cursor_x][cursor_y] = 0;
+    place_piece(cursor_x, cursor_y, player_turn);
+    return;
+  }
+  board[cursor_x][cursor_y] = 0;
+  console.log("to_capture :",to_capture);
+  console.log("friendly_in_danger :",friendly_in_danger);
+  console.log("opponent_marker :", opponent_marker);
+  console.log("friendly_marker :", friendly_marker);
+  console.log("liberty_opponents :", liberty_opponents);
+  console.log(Math.random());
   
 })
 
@@ -352,6 +406,10 @@ onInput("d", () => {
 
 onInput("i", () => {
   remove_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
+})
+
+onInput("k", () => {
+  place_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
 })
 
 onInput("l", () => {
@@ -380,35 +438,42 @@ function get_cursor_pos() {
   return [getFirst(cursor).x, getFirst(cursor).y];
 }
 
-function mark_dfs(map, x, y, marker, opponent_color) {
-  const adjacent = []
+function mark_dfs(map, x, y, marker, opponent_color, color) {
+  map[x][y] = marker;
+  const adjacent = [];
   var has_liberty = false;
-  if (x-1 >= 0) {
-    adjacent.push([x-1, y]);
-  }
-  if (x+1 < board_size[level]) {
-    adjacent.push([x+1, y]);
-  }
-  if (y-1 >= 0) {
-    adjacent.push([x, y-1]);
-  }
-  if (y+1 < board_size[level]) {
-    adjacent.push([x, y+1]);
-  }
+
+  //index bounds check
+  legal_adjacent_tiles(x, y, adjacent);
 
   for (const [x, y] in adjacent) {
-    
+
+    if (map[x][y] != 0) { //this place was visited already
+      continue;
+    }
+
+    var type = board[x][y];
+
+    if (type == color) {
+      if (mark_dfs(map, x, y, marker, opponent_color)) {
+        has_liberty = true;
+      };
+    } else if (type == opponent_color) {} else {
+      has_liberty = true;
+    }
   }
+
+  return has_liberty;
 }
 
 
-function place_piece(x,y,color) {
-  addSprite(x,y,color);
+function place_piece(x, y, color) {
+  addSprite(x, y, color);
   board[x][y] = color;
 }
 
-function remove_piece(x,y,color) {
-  const sprites = getTile(x,y);
+function remove_piece(x, y, color) {
+  const sprites = getTile(x, y);
   console.log(sprites, x, y, color);
   for (let i in sprites) {
     if (sprites[i].type == color) {
@@ -419,7 +484,28 @@ function remove_piece(x,y,color) {
   board[x][y] = 0;
 }
 
+function legal_adjacent_tiles(x, y, adjacent) {
+  if (x - 1 >= 0) {
+    adjacent.push([x - 1, y]);
+  }
+  if (x + 1 < board_size[level]) {
+    adjacent.push([x + 1, y]);
+  }
+  if (y - 1 >= 0) {
+    adjacent.push([x, y - 1]);
+  }
+  if (y + 1 < board_size[level]) {
+    adjacent.push([x, y + 1]);
+  }
+  return adjacent;
+}
 
-function is_allowed_to_be_placed(x,y,color) {
-
+function capture(map, to_capture, opponent_color) {
+  for (let x in map) {
+    for (let y in map[x]) {
+      if (to_capture.includes(map[x][y])) {
+        remove_piece(x, y, opponent_color);
+      }
+    }
+  }
 }
