@@ -21,6 +21,11 @@ const t_bar = "7"
 const b_bar = "8"
 const bg = "9"
 const cursor = "c"
+const logo_l = "!"
+const logo_r = "@"
+const menu_bg = "#"
+const sfx_button = "$"
+const play = "%"
 
 setLegend(
   [black, bitmap`
@@ -243,9 +248,98 @@ DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
 DDDDDDDDDDDDDDDD
-DDDDDDDDDDDDDDDD`]
-
+DDDDDDDDDDDDDDDD`],
+  [logo_l, bitmap`
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCC2
+CCCCCCCCCCCCCCCC
+CC222C222CC2C2C2
+C2CCCC2CC2C22CC2
+CC22CC2CC2C2CCC2
+CCCC2C2C2CC2CCC2
+C222CC22CCC2CCC2
+CCCCCC2CCCCCCCCC
+CCCCCC2CCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC`],
+  [logo_r, bitmap`
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CC222CCC222CC2CC
+C2CCCCC2CCC2C2CC
+C2CCCCC2CCC2C2CC
+C2CC22C2CCC2C2CC
+C2CCC2C2CCC2C2CC
+C2CCC2C2CCC2CCCC
+CC222CCC222CC2CC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC`],
+  [menu_bg, bitmap`
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC`],
+  [sfx_button, bitmap`
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CC222222222222CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC222222222222CC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC`],
+  [play, bitmap`
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+C222C2CCC222C2C2
+C2C2C2CCC2C2C2C2
+C2C2C2CCC2C2C2C2
+C222C2CCC222C222
+C2CCC2CCC2C2CC2C
+C2CCC2CCC2C2CC2C
+C2CCC2CCC2C2CC2C
+C2CCC222C2C2CC2C
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC
+CCCCCCCCCCCCCCCC`],
 )
+
+const menu = map`
+#!@#
+$%##
+####`;
 
 const boards = [
   map`
@@ -307,8 +401,40 @@ let board = create_board_arr(board_size[level]); //0 means empty, b means black 
 let ko = create_board_arr(board_size[level]);
 let komi = 6.5
 let sfx = false;
+let in_menu = true;
 
-game_start();
+let utf8Encode = new TextEncoder();
+
+console.log(utf8Encode.encode(menu))
+const result = map`This is a ${2+2}`;
+console.log(result);
+setMap(menu);
+addText(komi.toString(), {
+  x: 11,
+  y: 7,
+  color: color`2`
+})
+addText(" Komi", {
+  x: 10,
+  y: 9,
+  color: color`2`
+})
+addText("SFX", {
+  x: 1,
+  y: 9,
+  color: color`2`
+})
+addText("Size", {
+  x: 16,
+  y: 9,
+  color: color`2`
+})
+addText(board_size.toString(), {
+  x: 16,
+  y: 9,
+  color: color`2`
+})
+//game_start();
 
 function create_board_arr(size) {
   let arr = []
@@ -459,7 +585,7 @@ function territory_dfs(map, x, y) {
   var black_terr = false;
   var white_terr = false;
   var counter = 1;
-  
+
   //index bounds check
   legal_adjacent_tiles(x, y, adjacent);
 
@@ -494,186 +620,186 @@ function territory_dfs(map, x, y) {
 
 function game_start() {
 
-setMap(boards[level])
-setBackground(bg)
+  setMap(boards[level])
+  setBackground(bg)
 
-spawn_cursor();
+  spawn_cursor();
 
-onInput("j", () => {
-  if (gameover) {
-    return;
-  }
-  const [cursor_x, cursor_y] = get_cursor_pos();
-  if (board[cursor_x][cursor_y] != 0) {
-    return;
-  }
+  onInput("j", () => {
+    if (gameover) {
+      return;
+    }
+    const [cursor_x, cursor_y] = get_cursor_pos();
+    if (board[cursor_x][cursor_y] != 0) {
+      return;
+    }
 
-  if (ko[cursor_x][cursor_y] == 1) {
-    board[cursor_x][cursor_y] = 0;
-    return;
-  }
-  
-  board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs, will be deleted if move is illegal
-  let opponent_color = player_turn == black ? white : black;
-  let adjacent = [];
-  legal_adjacent_tiles(cursor_x, cursor_y, adjacent);
+    if (ko[cursor_x][cursor_y] == 1) {
+      board[cursor_x][cursor_y] = 0;
+      return;
+    }
 
-  let opponent_map = create_board_arr(board_size[level]);
-  let friendly_map = create_board_arr(board_size[level]);
-  let to_capture = [];
-  let friendly_in_danger = [];
-  var opponent_marker = 1;
-  var liberty_markers = {
-    1: false,
-    2: false,
-    3: false,
-    4: false
-  };
-  var friendly_marker = 1;
-  var liberty_opponents = 0;
+    board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs, will be deleted if move is illegal
+    let opponent_color = player_turn == black ? white : black;
+    let adjacent = [];
+    legal_adjacent_tiles(cursor_x, cursor_y, adjacent);
 
-  for (let i in adjacent) {
-    let [x, y] = adjacent[i];
-    let type = board[x][y];
+    let opponent_map = create_board_arr(board_size[level]);
+    let friendly_map = create_board_arr(board_size[level]);
+    let to_capture = [];
+    let friendly_in_danger = [];
+    var opponent_marker = 1;
+    var liberty_markers = {
+      1: false,
+      2: false,
+      3: false,
+      4: false
+    };
+    var friendly_marker = 1;
+    var liberty_opponents = 0;
 
-    if (type == player_turn) { //is our stone
+    for (let i in adjacent) {
+      let [x, y] = adjacent[i];
+      let type = board[x][y];
 
-      if (friendly_map[x][y] != 0) { //was here before
-        if (friendly_in_danger.includes(friendly_map[x][y])) {
-          friendly_in_danger.push(friendly_map[x][y]);
+      if (type == player_turn) { //is our stone
+
+        if (friendly_map[x][y] != 0) { //was here before
+          if (friendly_in_danger.includes(friendly_map[x][y])) {
+            friendly_in_danger.push(friendly_map[x][y]);
+          }
+          continue;
         }
-        continue;
-      }
 
-      if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) { //we have to invert colors, because we are searching for our stones
-        friendly_in_danger.push(friendly_marker);
-      }
-      friendly_marker += 1;
+        if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) { //we have to invert colors, because we are searching for our stones
+          friendly_in_danger.push(friendly_marker);
+        }
+        friendly_marker += 1;
 
-    } else if (type == opponent_color) {
-      if (opponent_map[x][y] != 0) { //was here before
-        if (liberty_markers[opponent_map[x][y]]) {
+      } else if (type == opponent_color) {
+        if (opponent_map[x][y] != 0) { //was here before
+          if (liberty_markers[opponent_map[x][y]]) {
+            liberty_opponents += 1;
+          }
+          continue;
+        }
+
+        if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, player_turn))) {
+          to_capture.push(opponent_marker);
+        } else {
+          liberty_markers[opponent_marker] = true;
           liberty_opponents += 1;
         }
-        continue;
-      }
+        opponent_marker += 1;
 
-      if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, player_turn))) {
-        to_capture.push(opponent_marker);
-      } else {
-        liberty_markers[opponent_marker] = true;
-        liberty_opponents += 1;
-      }
-      opponent_marker += 1;
-
-    }
-  }
-  var dont_delete_ko = false;
-  var dont_delete_ko_x;
-  var dont_delete_ko_y;
-  if (to_capture.length > 0) { //we can capture at least one, so our move is surely legal
-    if (to_capture.length == 1) {
-      let [flow, x_ko, y_ko] = count_for_ko(opponent_map, to_capture[0]);
-      if (flow) {
-        dont_delete_ko = true;
-        dont_delete_ko_x = x_ko;
-        dont_delete_ko_y = y_ko;
       }
     }
-    const points = capture(opponent_map, to_capture, opponent_color);
-    if (player_turn == black) {
-      black_score += points;
-    } else {
-      white_score += points;
-    }
-  }
-
-  if ((liberty_opponents + friendly_in_danger.length) == adjacent.length) {
-    board[cursor_x][cursor_y] = 0;
-    return;
-  }
-
-  if (dont_delete_ko) {
-    for (let iter_x in ko) {
-      for (let iter_y in ko[iter_x]) {
-        if (!(iter_x == dont_delete_ko_x && iter_y == dont_delete_ko_y)) {
-          ko[iter_x][iter_y] = 0;
+    var dont_delete_ko = false;
+    var dont_delete_ko_x;
+    var dont_delete_ko_y;
+    if (to_capture.length > 0) { //we can capture at least one, so our move is surely legal
+      if (to_capture.length == 1) {
+        let [flow, x_ko, y_ko] = count_for_ko(opponent_map, to_capture[0]);
+        if (flow) {
+          dont_delete_ko = true;
+          dont_delete_ko_x = x_ko;
+          dont_delete_ko_y = y_ko;
         }
       }
+      const points = capture(opponent_map, to_capture, opponent_color);
+      if (player_turn == black) {
+        black_score += points;
+      } else {
+        white_score += points;
+      }
     }
-  } else {
-    ko = create_board_arr(board_size[level]);
-  }
-  last_player_passed = false;
-  board[cursor_x][cursor_y] = 0;
-  place_piece(cursor_x, cursor_y, player_turn);
 
-  if (player_turn == black) {
-    player_turn = white;
-  } else {
-    player_turn = black;
-  }
-})
+    if ((liberty_opponents + friendly_in_danger.length) == adjacent.length) {
+      board[cursor_x][cursor_y] = 0;
+      return;
+    }
 
-onInput("s", () => {
-  if (gameover) {
-    return;
-  }
-  getFirst(cursor).y += 1
-})
+    if (dont_delete_ko) {
+      for (let iter_x in ko) {
+        for (let iter_y in ko[iter_x]) {
+          if (!(iter_x == dont_delete_ko_x && iter_y == dont_delete_ko_y)) {
+            ko[iter_x][iter_y] = 0;
+          }
+        }
+      }
+    } else {
+      ko = create_board_arr(board_size[level]);
+    }
+    last_player_passed = false;
+    board[cursor_x][cursor_y] = 0;
+    place_piece(cursor_x, cursor_y, player_turn);
 
-onInput("w", () => {
-  if (gameover) {
-    return;
-  }
-  getFirst(cursor).y -= 1
-})
+    if (player_turn == black) {
+      player_turn = white;
+    } else {
+      player_turn = black;
+    }
+  })
 
-onInput("a", () => {
-  if (gameover) {
-    return;
-  }
-  getFirst(cursor).x -= 1
-})
+  onInput("s", () => {
+    if (gameover) {
+      return;
+    }
+    getFirst(cursor).y += 1
+  })
 
-onInput("d", () => {
-  if (gameover) {
-    return;
-  }
-  getFirst(cursor).x += 1
-})
+  onInput("w", () => {
+    if (gameover) {
+      return;
+    }
+    getFirst(cursor).y -= 1
+  })
 
-onInput("i", () => { //passing
-  if (gameover) {
-    return;
-  }
-  if (player_turn == black) {
-    player_turn = white;
-  } else {
-    player_turn = black;
-  }
-  if (last_player_passed) {
-    gameover = true;
-  }
-  
-  last_player_passed = true;
-})
+  onInput("a", () => {
+    if (gameover) {
+      return;
+    }
+    getFirst(cursor).x -= 1
+  })
 
-onInput("k", () => {//zero out input
-  if (gameover) {
-    console.log("RESTART GAME");
-  }
-})
+  onInput("d", () => {
+    if (gameover) {
+      return;
+    }
+    getFirst(cursor).x += 1
+  })
 
-onInput("l", () => { //zero out input
-})
+  onInput("i", () => { //passing
+    if (gameover) {
+      return;
+    }
+    if (player_turn == black) {
+      player_turn = white;
+    } else {
+      player_turn = black;
+    }
+    if (last_player_passed) {
+      gameover = true;
+    }
 
-afterInput(() => {
-  if (gameover) {
-    gameover_screen();
-  }
-})
-  
+    last_player_passed = true;
+  })
+
+  onInput("k", () => { //zero out input
+    if (gameover) {
+      console.log("RESTART GAME");
+    }
+  })
+
+  onInput("l", () => { //zero out input
+  })
+
+  afterInput(() => {
+    if (gameover) {
+      gameover_screen();
+    }
+  })
+
 }
 
 function gameover_screen() {
@@ -693,14 +819,35 @@ function gameover_screen() {
     color: gameover_text_color
   })
   addText(score_text, {
-      x: 6,
-      y: 7,
-      color: gameover_text_color
-    });
-  addText("Press k to restart", {
-      x: 1,
-      y: 9,
-      color: gameover_text_color
-    });
-  
+    x: 6,
+    y: 7,
+    color: gameover_text_color
+  });
+  addText("Press k to exit", {
+    x: 1,
+    y: 9,
+    color: gameover_text_color
+  });
+
+}
+
+function create_board(size) {
+  let return_value = ""
+  return_value += "\n";
+  return_value += "1";
+  for (let i = 0; i < size - 2; i++) { return_value += "7"}
+  return_value += "2";
+  return_value += "\n";
+  for (let i = 0; i < size - 2; i++) {
+    return_value += "5";
+    for (let j = 0; j < size - 2; j++) { return_value += "5"}
+    return_value += "6";
+    return_value += "\n";
+  }
+  return_value += "3";
+  for (let i = 0; i < size - 2; i++) { return_value += "8"}
+  return_value += "4";
+  return_value += "\n";
+  return return_value;
+
 }
