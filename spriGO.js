@@ -26,8 +26,27 @@ const logo_r = "@"
 const menu_bg = "#"
 const sfx_button = "$"
 const play = "%"
+const menu_cursor = "^"
+const sfx_cross = "&"
 
 setLegend(
+  [menu_cursor, bitmap`
+5555555555555555
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5..............5
+5555555555555555`],
   [black, bitmap`
 ................
 ....00000000....
@@ -300,18 +319,35 @@ CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC`],
+  [sfx_cross, bitmap`
+................
+................
+................
+...22......22...
+.....22..22.....
+.......22.......
+.......22.......
+.....22..22.....
+...22......22...
+................
+................
+................
+................
+................
+................
+................`],
   [sfx_button, bitmap`
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
+CC222222222222CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC2CCCCCCCCCC2CC
+CC222222222222CC
 CCCCCCCCCCCCCCCC
-CC222222222222CC
-CC2CCCCCCCCCC2CC
-CC2CCCCCCCCCC2CC
-CC2CCCCCCCCCC2CC
-CC2CCCCCCCCCC2CC
-CC2CCCCCCCCCC2CC
-CC2CCCCCCCCCC2CC
-CC222222222222CC
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
@@ -320,15 +356,15 @@ CCCCCCCCCCCCCCCC`],
   [play, bitmap`
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
+CCCCCC22CCCCCCCC
+CCCCCC2222CCCCCC
+CCCCCC222222CCCC
+CCCCCC2222222CCC
+CCCCCC222222CCCC
+CCCCCC2222CCCCCC
+CCCCCC22CCCCCCCC
 CCCCCCCCCCCCCCCC
-C222C2CCC222C2C2
-C2C2C2CCC2C2C2C2
-C2C2C2CCC2C2C2C2
-C222C2CCC222C222
-C2CCC2CCC2C2CC2C
-C2CCC2CCC2C2CC2C
-C2CCC2CCC2C2CC2C
-C2CCC222C2C2CC2C
+CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC
@@ -341,55 +377,8 @@ const menu = map`
 $%##
 ####`;
 
-const boards = [
-  map`
-177777772
-500000006
-500000006
-500000006
-500000006
-500000006
-500000006
-500000006
-388888884`, //9x9
-  map`
-1777777777772
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-5000000000006
-3888888888884`, //13x13
-  map`
-1777777777777777772
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-5000000000000000006
-3888888888888888884` //19x19
-]
-
-//selectable board sizes
-const board_size = [9, 13, 19];
+//board size
+var board_size = 9;
 
 let level = 0
 var black_score = 0;
@@ -397,43 +386,24 @@ var white_score = 0;
 var last_player_passed = false;
 var gameover = false;
 let player_turn = black; //black starts
-let board = create_board_arr(board_size[level]); //0 means empty, b means black stone, w means white stone
-let ko = create_board_arr(board_size[level]);
+let board; //0 means empty, b means black stone, w means white stone
+let ko = create_board_arr(board_size);
 let komi = 6.5
 let sfx = false;
 let in_menu = true;
+var menu_cursor_pos = 1;
 
-let utf8Encode = new TextEncoder();
+function start_menu() {
 
-console.log(utf8Encode.encode(menu))
-const result = map`This is a ${2+2}`;
-console.log(result);
-setMap(menu);
-addText(komi.toString(), {
-  x: 11,
-  y: 7,
-  color: color`2`
-})
-addText(" Komi", {
-  x: 10,
-  y: 9,
-  color: color`2`
-})
-addText("SFX", {
-  x: 1,
-  y: 9,
-  color: color`2`
-})
-addText("Size", {
-  x: 16,
-  y: 9,
-  color: color`2`
-})
-addText(board_size.toString(), {
-  x: 16,
-  y: 9,
-  color: color`2`
-})
+  setMap(menu);
+
+  addSprite(menu_cursor_pos, 1, menu_cursor);
+
+  draw_menu_text();
+  define_inputs();
+}
+
+start_menu();
 //game_start();
 
 function create_board_arr(size) {
@@ -505,13 +475,13 @@ function legal_adjacent_tiles(x, y, adjacent) {
   if (x - 1 >= 0) {
     adjacent.push([x - 1, y]);
   }
-  if (x + 1 < board_size[level]) {
+  if (x + 1 < board_size) {
     adjacent.push([x + 1, y]);
   }
   if (y - 1 >= 0) {
     adjacent.push([x, y - 1]);
   }
-  if (y + 1 < board_size[level]) {
+  if (y + 1 < board_size) {
     adjacent.push([x, y + 1]);
   }
   return adjacent;
@@ -551,12 +521,12 @@ function count_for_ko(map, marker) {
 }
 
 function spawn_cursor() {
-  const half = Math.floor(board_size[level] / 2);
+  const half = Math.floor(board_size / 2);
   addSprite(half, half, cursor);
 }
 
 function count_territory() {
-  const map = create_board_arr(board_size[level]);
+  const map = create_board_arr(board_size);
 
   for (let i in board) {
     for (let j in board[i]) {
@@ -620,12 +590,119 @@ function territory_dfs(map, x, y) {
 
 function game_start() {
 
-  setMap(boards[level])
+  clearText();
+  const board_map = create_board(board_size);
+
+  setMap(board_map)
   setBackground(bg)
 
   spawn_cursor();
+  board = create_board_arr(board_size);
+}
+
+function gameover_screen() {
+  count_territory();a
+  let winning_player_text = "";
+  const gameover_text_color = color`7`;
+  const score_text = " " + black_score + " : " + (white_score + komi);
+
+  if (black_score > (white_score + komi)) { //black wins
+    winning_player_text = "Black wins!";
+  } else { //white wins
+    winning_player_text = "White wins!";
+  }
+  addText(winning_player_text, {
+    x: 5,
+    y: 5,
+    color: gameover_text_color
+  })
+  addText(score_text, {
+    x: 6,
+    y: 7,
+    color: gameover_text_color
+  });
+  addText("Press k to exit", {
+    x: 2,
+    y: 9,
+    color: gameover_text_color
+  });
+
+}
+
+function create_board(size) {
+  let return_value = ""
+  return_value += "\n";
+  return_value += "1";
+  for (let i = 0; i < size - 2; i++) { return_value += "7" }
+  return_value += "2";
+  return_value += "\n";
+  for (let i = 0; i < size - 2; i++) {
+    return_value += "5";
+    for (let j = 0; j < size - 2; j++) { return_value += "0" }
+    return_value += "6";
+    return_value += "\n";
+  }
+  return_value += "3";
+  for (let i = 0; i < size - 2; i++) { return_value += "8" }
+  return_value += "4";
+  return_value += "\n";
+  return map`${return_value}`;
+}
+
+function draw_menu_text() {
+  addText(komi.toString(), {
+    x: 11,
+    y: 7,
+    color: color`2`
+  });
+  addText(board_size.toString(), {
+    x: 16,
+    y: 7,
+    color: color`2`
+  });
+  addText(" Komi", {
+    x: 10,
+    y: 9,
+    color: color`2`
+  })
+  addText("SFX", {
+    x: 1,
+    y: 9,
+    color: color`2`
+  })
+  addText("Size", {
+    x: 16,
+    y: 9,
+    color: color`2`
+  })
+  addText("Play", {
+    x: 6,
+    y: 9,
+    color: color`2`
+  })
+}
+
+function define_inputs() {
 
   onInput("j", () => {
+    if (in_menu) {
+      if (menu_cursor_pos == 0) {
+        if (sfx) {
+          sfx = false;
+          getFirst(sfx_cross).remove();
+        } else {
+          sfx = true;
+          addSprite(0, 1, sfx_cross);
+        }
+        return;
+      } else if (menu_cursor_pos == 1) {
+        in_menu = false;
+        game_start();
+        return;
+      }
+      return;
+    }
+
     if (gameover) {
       return;
     }
@@ -644,8 +721,8 @@ function game_start() {
     let adjacent = [];
     legal_adjacent_tiles(cursor_x, cursor_y, adjacent);
 
-    let opponent_map = create_board_arr(board_size[level]);
-    let friendly_map = create_board_arr(board_size[level]);
+    let opponent_map = create_board_arr(board_size);
+    let friendly_map = create_board_arr(board_size);
     let to_capture = [];
     let friendly_in_danger = [];
     var opponent_marker = 1;
@@ -728,7 +805,7 @@ function game_start() {
         }
       }
     } else {
-      ko = create_board_arr(board_size[level]);
+      ko = create_board_arr(board_size);
     }
     last_player_passed = false;
     board[cursor_x][cursor_y] = 0;
@@ -742,34 +819,58 @@ function game_start() {
   })
 
   onInput("s", () => {
-    if (gameover) {
+    if (gameover || in_menu) {
       return;
     }
     getFirst(cursor).y += 1
   })
 
   onInput("w", () => {
-    if (gameover) {
+    if (gameover || in_menu) {
       return;
     }
     getFirst(cursor).y -= 1
   })
 
   onInput("a", () => {
-    if (gameover) {
+    if (in_menu) {
+      getFirst(menu_cursor).x -= 1;
+      menu_cursor_pos = getFirst(menu_cursor).x;
+      return;
+    } else if (gameover) {
       return;
     }
     getFirst(cursor).x -= 1
   })
 
   onInput("d", () => {
-    if (gameover) {
+    if (in_menu) {
+      getFirst(menu_cursor).x += 1;
+      menu_cursor_pos = getFirst(menu_cursor).x;
+      return;
+    } else if (gameover) {
       return;
     }
     getFirst(cursor).x += 1
   })
 
   onInput("i", () => { //passing
+    if (in_menu) {
+      if (menu_cursor_pos == 2) {
+        komi += 1.0;
+        if (komi > 9.5) {
+          komi = 9.5;
+        } else if (komi < 0.0) {
+          komi = 0.0;
+        }
+      } else if (menu_cursor_pos == 3) {
+        board_size += 1;
+        if (board_size > 19) {
+          board_size = 19;
+        }
+      }
+      return;
+    }
     if (gameover) {
       return;
     }
@@ -786,6 +887,24 @@ function game_start() {
   })
 
   onInput("k", () => { //zero out input
+    if (menu) {
+      if (menu_cursor_pos == 2) {
+        komi -= 1.0;
+        if (komi > 9.5) {
+          komi = 9.5;
+        } else if (komi < 0.5) {
+          komi = 0.5;
+        }
+        
+      }
+      else if (menu_cursor_pos == 3) {
+        board_size -= 1;
+        if (board_size < 5) {
+          board_size = 5;
+        }
+      }
+      return;
+    }
     if (gameover) {
       console.log("RESTART GAME");
     }
@@ -795,59 +914,14 @@ function game_start() {
   })
 
   afterInput(() => {
+    if (in_menu) {
+      clearText();
+      draw_menu_text();
+      return;
+    }
     if (gameover) {
       gameover_screen();
     }
   })
-
-}
-
-function gameover_screen() {
-
-  let winning_player_text = "";
-  const gameover_text_color = color`7`;
-  const score_text = " " + black_score + " : " + (white_score + komi);
-
-  if (black_score > (white_score + komi)) { //black wins
-    winning_player_text = "Black wins!";
-  } else { //white wins
-    winning_player_text = "White wins!";
-  }
-  addText(winning_player_text, {
-    x: 5,
-    y: 5,
-    color: gameover_text_color
-  })
-  addText(score_text, {
-    x: 6,
-    y: 7,
-    color: gameover_text_color
-  });
-  addText("Press k to exit", {
-    x: 1,
-    y: 9,
-    color: gameover_text_color
-  });
-
-}
-
-function create_board(size) {
-  let return_value = ""
-  return_value += "\n";
-  return_value += "1";
-  for (let i = 0; i < size - 2; i++) { return_value += "7"}
-  return_value += "2";
-  return_value += "\n";
-  for (let i = 0; i < size - 2; i++) {
-    return_value += "5";
-    for (let j = 0; j < size - 2; j++) { return_value += "5"}
-    return_value += "6";
-    return_value += "\n";
-  }
-  return_value += "3";
-  for (let i = 0; i < size - 2; i++) { return_value += "8"}
-  return_value += "4";
-  return_value += "\n";
-  return return_value;
 
 }
