@@ -1,11 +1,15 @@
 /*
-First time? Check out the tutorial game:
-https://sprig.hackclub.com/gallery/getting_started
-
 @title: spriGO
-@author: 
-@tags: []
-@addedOn: 2024-00-00
+@author: InfinityCity18
+@tags: ['multiplayer', 'strategy', 'go', 'baduk']
+@addedOn: 2024-08-12
+*/
+
+/*
+wasd to move,
+j to place stones, confirm in menu
+i to pass, 2 consecutive passes end the game
+i and k to increase and decrease komi and size in menu
 */
 
 const white = "w"
@@ -372,26 +376,28 @@ CCCCCCCCCCCCCCCC
 CCCCCCCCCCCCCCCC`],
 )
 
+const placing_sound = tune`
+200: G4^200,
+6200`;
+
 const menu = map`
 #!@#
 $%##
 ####`;
 
-//board size
-var board_size = 9;
-
-let level = 0
-var black_score = 0;
-var white_score = 0;
-var last_player_passed = false;
-var gameover = false;
-let player_turn = black; //black starts
+var black_score;
+var white_score;
+var last_player_passed;
+let player_turn; //black starts
 let board; //0 means empty, b means black stone, w means white stone
-let ko = create_board_arr(board_size);
+let ko;
+var board_size = 9;
 let komi = 6.5
 let sfx = false;
 let in_menu = true;
 var menu_cursor_pos = 1;
+var gameover = false;
+var are_inputs_defined = false;
 
 function start_menu() {
 
@@ -400,7 +406,10 @@ function start_menu() {
   addSprite(menu_cursor_pos, 1, menu_cursor);
 
   draw_menu_text();
-  define_inputs();
+  if (!(are_inputs_defined)) {
+    define_inputs();
+    are_inputs_defined = true;
+  }
 }
 
 start_menu();
@@ -544,9 +553,6 @@ function count_territory() {
       }
     }
   }
-  console.log("terr map: ", map);
-  console.log("black score: ", black_score);
-  console.log("white score: ", white_score);
 }
 
 function territory_dfs(map, x, y) {
@@ -598,10 +604,15 @@ function game_start() {
 
   spawn_cursor();
   board = create_board_arr(board_size);
+  ko = create_board_arr(board_size);
+  black_score = 0;
+  white_score = 0;
+  last_player_passed = false;
+  player_turn = black;
 }
 
 function gameover_screen() {
-  count_territory();a
+  count_territory();
   let winning_player_text = "";
   const gameover_text_color = color`7`;
   const score_text = " " + black_score + " : " + (white_score + komi);
@@ -810,7 +821,9 @@ function define_inputs() {
     last_player_passed = false;
     board[cursor_x][cursor_y] = 0;
     place_piece(cursor_x, cursor_y, player_turn);
-
+    if (sfx) {
+      playTune(placing_sound);
+    }
     if (player_turn == black) {
       player_turn = white;
     } else {
@@ -887,7 +900,7 @@ function define_inputs() {
   })
 
   onInput("k", () => { //zero out input
-    if (menu) {
+    if (in_menu) {
       if (menu_cursor_pos == 2) {
         komi -= 1.0;
         if (komi > 9.5) {
@@ -906,7 +919,14 @@ function define_inputs() {
       return;
     }
     if (gameover) {
-      console.log("RESTART GAME");
+      clearText();
+      gameover = false;
+      in_menu = true;
+      board_size = 9;
+      komi = 6.5
+      menu_cursor_pos = 1;
+      sfx = false;
+      start_menu();
     }
   })
 
@@ -923,5 +943,4 @@ function define_inputs() {
       gameover_screen();
     }
   })
-
 }
