@@ -297,177 +297,18 @@ const boards = [
 //selectable board sizes
 const board_size = [9, 13, 19];
 
-setSolids([])
-
 let level = 0
-let player_turn = black; //black starts
-
-setMap(boards[level])
-
-//0 means empty, b means black stone, w means white stone
-let board = create_board_arr(board_size[level]);
-
-setBackground(bg)
-
-spawn_cursor();
-
 var black_score = 0;
 var white_score = 0;
-
-setPushables({})
-
-afterInput(() => {})
-
+var last_player_passed = false;
+var gameover = false;
+let player_turn = black; //black starts
+let board = create_board_arr(board_size[level]); //0 means empty, b means black stone, w means white stone
 let ko = create_board_arr(board_size[level]);
+let komi = 6.5
+let sfx = false;
 
-onInput("j", () => {
-  const [cursor_x, cursor_y] = get_cursor_pos();
-  if (board[cursor_x][cursor_y] != 0) {
-    return;
-  }
-
-  if (ko[cursor_x][cursor_y] == 1) {
-    board[cursor_x][cursor_y] = 0;
-    return;
-  }
-  
-  board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs, will be deleted if move is illegal
-  let opponent_color = player_turn == black ? white : black;
-  let adjacent = [];
-  legal_adjacent_tiles(cursor_x, cursor_y, adjacent);
-
-  let opponent_map = create_board_arr(board_size[level]);
-  let friendly_map = create_board_arr(board_size[level]);
-  let to_capture = [];
-  let friendly_in_danger = [];
-  var opponent_marker = 1;
-  var liberty_markers = {
-    1: false,
-    2: false,
-    3: false,
-    4: false
-  };
-  var friendly_marker = 1;
-  var liberty_opponents = 0;
-
-  for (let i in adjacent) {
-    let [x, y] = adjacent[i];
-    let type = board[x][y];
-
-    if (type == player_turn) { //is our stone
-
-      if (friendly_map[x][y] != 0) { //was here before
-        if (friendly_in_danger.includes(friendly_map[x][y])) {
-          friendly_in_danger.push(friendly_map[x][y]);
-        }
-        continue;
-      }
-
-      if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) { //we have to invert colors, because we are searching for our stones
-        friendly_in_danger.push(friendly_marker);
-      }
-      friendly_marker += 1;
-
-    } else if (type == opponent_color) {
-      if (opponent_map[x][y] != 0) { //was here before
-        if (liberty_markers[opponent_map[x][y]]) {
-          liberty_opponents += 1;
-        }
-        continue;
-      }
-
-      if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, player_turn))) {
-        to_capture.push(opponent_marker);
-      } else {
-        liberty_markers[opponent_marker] = true;
-        liberty_opponents += 1;
-      }
-      opponent_marker += 1;
-
-    }
-  }
-  var dont_delete_ko = false;
-  var dont_delete_ko_x;
-  var dont_delete_ko_y;
-  if (to_capture.length > 0) { //we can capture at least one, so our move is surely legal
-    if (to_capture.length == 1) {
-      let [flow, x_ko, y_ko] = count_for_ko(opponent_map, to_capture[0]);
-      if (flow) {
-        dont_delete_ko = true;
-        dont_delete_ko_x = x_ko;
-        dont_delete_ko_y = y_ko;
-      }
-    }
-    capture(opponent_map, to_capture, opponent_color);
-  }
-
-  if ((liberty_opponents + friendly_in_danger.length) == adjacent.length) {
-    board[cursor_x][cursor_y] = 0;
-    return;
-  }
-
-  if (dont_delete_ko) {
-    for (let iter_x in ko) {
-      for (let iter_y in ko[iter_x]) {
-        if (!(iter_x == dont_delete_ko_x && iter_y == dont_delete_ko_y)) {
-          ko[iter_x][iter_y] = 0;
-        }
-      }
-    }
-  } else {
-    ko = create_board_arr(board_size[level]);
-  }
-
-  board[cursor_x][cursor_y] = 0;
-  place_piece(cursor_x, cursor_y, player_turn);
-  console.log("opponent map: ", opponent_map);
-  console.log("friendly_map: ", friendly_map);
-  console.log("to_capture :", to_capture);
-  console.log("friendly_in_danger :", friendly_in_danger);
-  console.log("opponent_marker :", opponent_marker);
-  console.log("friendly_marker :", friendly_marker);
-  console.log("liberty_opponents :", liberty_opponents);
-  console.log(Math.random());
-
-})
-
-onInput("s", () => {
-  getFirst(cursor).y += 1
-})
-
-onInput("w", () => {
-  getFirst(cursor).y -= 1
-})
-
-onInput("a", () => {
-  getFirst(cursor).x -= 1
-})
-
-onInput("d", () => {
-  getFirst(cursor).x += 1
-})
-
-onInput("i", () => {
-  remove_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
-})
-
-onInput("k", () => {
-  /*
-  if (board[getFirst(cursor).x][getFirst(cursor).y] == player_turn) {
-    return;
-  }
-  place_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
-  */
-  count_territory();
-})
-
-onInput("l", () => {
-  if (player_turn == black) {
-    player_turn = white;
-  } else {
-    player_turn = black;
-  }
-})
+game_start();
 
 function create_board_arr(size) {
   let arr = []
@@ -551,13 +392,16 @@ function legal_adjacent_tiles(x, y, adjacent) {
 }
 
 function capture(map, to_capture, opponent_color) {
+  var points = 0;
   for (let x in map) {
     for (let y in map[x]) {
       if (to_capture.includes(map[x][y])) {
         remove_piece(x, y, opponent_color);
+        points += 1;
       }
     }
   }
+  return points;
 }
 
 function count_for_ko(map, marker) {
@@ -607,7 +451,6 @@ function count_territory() {
   console.log("terr map: ", map);
   console.log("black score: ", black_score);
   console.log("white score: ", white_score);
-  
 }
 
 function territory_dfs(map, x, y) {
@@ -647,4 +490,217 @@ function territory_dfs(map, x, y) {
   }
 
   return [black_terr, white_terr, counter];
+}
+
+function game_start() {
+
+setMap(boards[level])
+setBackground(bg)
+
+spawn_cursor();
+
+onInput("j", () => {
+  if (gameover) {
+    return;
+  }
+  const [cursor_x, cursor_y] = get_cursor_pos();
+  if (board[cursor_x][cursor_y] != 0) {
+    return;
+  }
+
+  if (ko[cursor_x][cursor_y] == 1) {
+    board[cursor_x][cursor_y] = 0;
+    return;
+  }
+  
+  board[cursor_x][cursor_y] = player_turn; // temp add for mark_dfs, will be deleted if move is illegal
+  let opponent_color = player_turn == black ? white : black;
+  let adjacent = [];
+  legal_adjacent_tiles(cursor_x, cursor_y, adjacent);
+
+  let opponent_map = create_board_arr(board_size[level]);
+  let friendly_map = create_board_arr(board_size[level]);
+  let to_capture = [];
+  let friendly_in_danger = [];
+  var opponent_marker = 1;
+  var liberty_markers = {
+    1: false,
+    2: false,
+    3: false,
+    4: false
+  };
+  var friendly_marker = 1;
+  var liberty_opponents = 0;
+
+  for (let i in adjacent) {
+    let [x, y] = adjacent[i];
+    let type = board[x][y];
+
+    if (type == player_turn) { //is our stone
+
+      if (friendly_map[x][y] != 0) { //was here before
+        if (friendly_in_danger.includes(friendly_map[x][y])) {
+          friendly_in_danger.push(friendly_map[x][y]);
+        }
+        continue;
+      }
+
+      if (!(mark_dfs(friendly_map, x, y, friendly_marker, player_turn, opponent_color))) { //we have to invert colors, because we are searching for our stones
+        friendly_in_danger.push(friendly_marker);
+      }
+      friendly_marker += 1;
+
+    } else if (type == opponent_color) {
+      if (opponent_map[x][y] != 0) { //was here before
+        if (liberty_markers[opponent_map[x][y]]) {
+          liberty_opponents += 1;
+        }
+        continue;
+      }
+
+      if (!(mark_dfs(opponent_map, x, y, opponent_marker, opponent_color, player_turn))) {
+        to_capture.push(opponent_marker);
+      } else {
+        liberty_markers[opponent_marker] = true;
+        liberty_opponents += 1;
+      }
+      opponent_marker += 1;
+
+    }
+  }
+  var dont_delete_ko = false;
+  var dont_delete_ko_x;
+  var dont_delete_ko_y;
+  if (to_capture.length > 0) { //we can capture at least one, so our move is surely legal
+    if (to_capture.length == 1) {
+      let [flow, x_ko, y_ko] = count_for_ko(opponent_map, to_capture[0]);
+      if (flow) {
+        dont_delete_ko = true;
+        dont_delete_ko_x = x_ko;
+        dont_delete_ko_y = y_ko;
+      }
+    }
+    const points = capture(opponent_map, to_capture, opponent_color);
+    if (player_turn == black) {
+      black_score += points;
+    } else {
+      white_score += points;
+    }
+  }
+
+  if ((liberty_opponents + friendly_in_danger.length) == adjacent.length) {
+    board[cursor_x][cursor_y] = 0;
+    return;
+  }
+
+  if (dont_delete_ko) {
+    for (let iter_x in ko) {
+      for (let iter_y in ko[iter_x]) {
+        if (!(iter_x == dont_delete_ko_x && iter_y == dont_delete_ko_y)) {
+          ko[iter_x][iter_y] = 0;
+        }
+      }
+    }
+  } else {
+    ko = create_board_arr(board_size[level]);
+  }
+  last_player_passed = false;
+  board[cursor_x][cursor_y] = 0;
+  place_piece(cursor_x, cursor_y, player_turn);
+
+  if (player_turn == black) {
+    player_turn = white;
+  } else {
+    player_turn = black;
+  }
+})
+
+onInput("s", () => {
+  if (gameover) {
+    return;
+  }
+  getFirst(cursor).y += 1
+})
+
+onInput("w", () => {
+  if (gameover) {
+    return;
+  }
+  getFirst(cursor).y -= 1
+})
+
+onInput("a", () => {
+  if (gameover) {
+    return;
+  }
+  getFirst(cursor).x -= 1
+})
+
+onInput("d", () => {
+  if (gameover) {
+    return;
+  }
+  getFirst(cursor).x += 1
+})
+
+onInput("i", () => { //passing
+  if (gameover) {
+    return;
+  }
+  if (player_turn == black) {
+    player_turn = white;
+  } else {
+    player_turn = black;
+  }
+  if (last_player_passed) {
+    gameover = true;
+  }
+  
+  last_player_passed = true;
+})
+
+onInput("k", () => {//zero out input
+  if (gameover) {
+    console.log("RESTART GAME");
+  }
+})
+
+onInput("l", () => { //zero out input
+})
+
+afterInput(() => {
+  if (gameover) {
+    gameover_screen();
+  }
+})
+  
+}
+
+function gameover_screen() {
+
+  let winning_player_text = "";
+  const gameover_text_color = color`7`;
+  const score_text = " " + black_score + " : " + (white_score + komi);
+
+  if (black_score > (white_score + komi)) { //black wins
+    winning_player_text = "Black wins!";
+  } else { //white wins
+    winning_player_text = "White wins!";
+  }
+  addText(winning_player_text, {
+    x: 5,
+    y: 5,
+    color: gameover_text_color
+  })
+  addText(score_text, {
+      x: 6,
+      y: 7,
+      color: gameover_text_color
+    });
+  addText("Press k to restart", {
+      x: 1,
+      y: 9,
+      color: gameover_text_color
+    });
+  
 }
