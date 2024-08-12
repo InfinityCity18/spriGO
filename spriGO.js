@@ -311,6 +311,9 @@ setBackground(bg)
 
 spawn_cursor();
 
+var black_score = 0;
+var white_score = 0;
+
 setPushables({})
 
 afterInput(() => {})
@@ -449,10 +452,13 @@ onInput("i", () => {
 })
 
 onInput("k", () => {
+  /*
   if (board[getFirst(cursor).x][getFirst(cursor).y] == player_turn) {
     return;
   }
   place_piece(getFirst(cursor).x, getFirst(cursor).y, player_turn);
+  */
+  count_territory();
 })
 
 onInput("l", () => {
@@ -577,4 +583,68 @@ function count_for_ko(map, marker) {
 function spawn_cursor() {
   const half = Math.floor(board_size[level] / 2);
   addSprite(half, half, cursor);
+}
+
+function count_territory() {
+  const map = create_board_arr(board_size[level]);
+
+  for (let i in board) {
+    for (let j in board[i]) {
+      if (!(board[Number(i)][Number(j)] != 0) && (map[i][j] == 0)) {
+        const evaluation = territory_dfs(map, Number(i), Number(j));
+        if (evaluation[0] && evaluation[1]) {
+          //neutral territory
+        } else if (evaluation[0]) {
+          black_score += evaluation[2];
+        } else if (evaluation[1]) {
+          white_score += evaluation[2];
+        } else {
+          //should only be reachable when game is ended with zero pieces placed
+        }
+      }
+    }
+  }
+  console.log("terr map: ", map);
+  console.log("black score: ", black_score);
+  console.log("white score: ", white_score);
+  
+}
+
+function territory_dfs(map, x, y) {
+  map[x][y] = "v";
+  const adjacent = [];
+  var black_terr = false;
+  var white_terr = false;
+  var counter = 1;
+  
+  //index bounds check
+  legal_adjacent_tiles(x, y, adjacent);
+
+  for (const i in adjacent) {
+    const x_loop = adjacent[i][0];
+    const y_loop = adjacent[i][1];
+
+    if (map[x_loop][y_loop] != 0) { //this place was visited already
+      continue;
+    }
+
+    var type = board[x_loop][y_loop];
+
+    if (type == black) {
+      black_terr = true;
+    } else if (type == white) {
+      white_terr = true;
+    } else {
+      const evaluation = territory_dfs(map, x_loop, y_loop);
+      if (evaluation[0]) {
+        black_terr = evaluation[0];
+      }
+      if (evaluation[1]) {
+        white_terr = evaluation[1];
+      }
+      counter += evaluation[2];
+    }
+  }
+
+  return [black_terr, white_terr, counter];
 }
