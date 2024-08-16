@@ -2,6 +2,8 @@
 
 spriGO is go made for sprig, a 2 player game which is about having more territory and captured stone than your opponent. The rules are simple, but skills of the player may vary by great amount, somewhat like in chess.
 
+Play it here: https://sprig.hackclub.com/share/TIYHEaKJQ0vPLMeoBWWe
+
 Controls:
 
 Use wasd to move cursor around on board or in menu.
